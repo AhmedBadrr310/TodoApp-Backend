@@ -1,14 +1,16 @@
 import { Request, Response } from "express";
 import { db } from "../../db";
-import { tasksTable } from "../../db/schema";
+import { tasksTable } from "../../db/TaskSchema";
 import { asc, desc, eq, ilike, sql } from "drizzle-orm";
+import sendErrorMessage from "../../Helpers/errorResponse";
+import { categoryTable } from "../../db/CategorySchema";
 
 
 export async function getTasks(req: Request, res: Response) {
     try {
         const tasks = await db.select()
             .from(tasksTable)
-            .where(req.query.title ? ilike(tasksTable.title, '%' + req.query.title as string + '%') : sql`TRUE`)
+            .where(req.query.title ? ilike(tasksTable.title, '%' + req.query.title as string + '%') : sql`TRUE` && eq(categoryTable.id, parseInt(req.query.categoryId as string)))
             .orderBy(req.query.sort && req.query.sort === 'asc' ? asc(tasksTable.createdAt) : desc(tasksTable.createdAt))
 
         res.status(200).json(tasks)
@@ -38,8 +40,9 @@ export async function editTask(req: Request, res: Response) {
 
         if (!task) {
             res.status(400).send({ code: 400, message: "error editing the task" })
+
+            res.status(200).json(task);
         }
-        res.status(200).json(task);
 
     } catch (e) {
         sendErrorMessage(e, res);
@@ -57,9 +60,9 @@ export async function completeTask(req: Request, res: Response) {
     } catch (e) {
         sendErrorMessage(e, res);
     }
-
-
 }
+
+
 
 export async function deleteTask(req: Request, res: Response) {
     try {
@@ -86,10 +89,4 @@ export async function createTask(req: Request, res: Response) {
     } catch (e) {
         sendErrorMessage(e, res);
     }
-}
-
-
-function sendErrorMessage(e: any, res: Response) {
-    const message = e instanceof Error ? e.message : String(e);
-    res.status(500).send({ code: 401, message });
 }
